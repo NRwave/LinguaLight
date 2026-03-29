@@ -3,15 +3,21 @@ from scipy.io.wavfile import write
 import numpy as np
 from langdetect import detect
 from deep_translator import GoogleTranslator
+import serial
+import time
+
 import constants 
 #from Catagorizing_Speech import detect_tone, keyword_indication
 HIGH_THRESHOLD = 320
 LOW_THRESHOLD = 150
 
+LANGUAGES = ["en-US", "es-ES"]
 
 INTERROGATIVE_KEYWORDS = ["who", "what", "when", "where", "why", "who", "is", "are", "do", "does", "can", "could", "would", "may"]
 EXCLAMATORY_KEYWORDS = ["wow", "awesome", "amazing", "crazy", "unbelievable", "yay", "woohoo", "oops", "whoops", "oopsie", "uh oh", "oh no", "weee", "aw, man", "ouch", "owie", "mmm", "yum", "yuck", "ick", "ew", "woah", "cool"]
 FILLER_WORDS = ["um", "like", "so", "uh", "you know", "you see"]
+arduino = serial.Serial('COM3', 9600)  # Replace COM3 with your port
+time.sleep(2)
 
 def clean_text(text):
     lowercase_text = text.lower()
@@ -92,30 +98,40 @@ while True:
 
             case ("High", "Emotional"):
                 catagory = "Exclamation"
+                arduino.write(b'E\n')
                 
             case ("High", "Pondering"):
                 catagory = "Question"
-                
+                arduino.write(b'Q\n')
+
             case ("High", "Neutral"):
                 catagory = "Exclamation"
-                
+                arduino.write(b'E\n')
+
             case ("Low", "Emotional"):
-                catagory = "Statement"
-            
+                catagory = "Exclamation"
+                arduino.write(b'E\n')
+
             case ("Low", "Pondering"):
                 catagory = "Question"
-                
+                arduino.write(b'Q\n')
+
             case ("Low", "Neutral"):
                 catagory = "Statement"
+                arduino.write(b'S\n')
 
             case ("Neutral", "Emotional"):
-                catagory = "Statement"
+                catagory = "Exclamation"
+                arduino.write(b'E\n')
 
             case ("Neutral", "Pondering"):
                 catagory = "Question"
-
+                arduino.write(b'Q\n')
+                
             case ("Neutral", "Neutral"):
                 catagory = "Statement"
+                arduino.write(b'S\n')
+                
         message = f"{catagory} Tone: {tone} Keywords: {keywords}"
         print(message)
         
