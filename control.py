@@ -4,11 +4,12 @@ import numpy as np
 from langdetect import detect
 from deep_translator import GoogleTranslator
 import serial
+import speech_recognition as sr
 import time
 
 import constants 
 #from Catagorizing_Speech import detect_tone, keyword_indication
-HIGH_THRESHOLD = 320
+HIGH_THRESHOLD = 500
 LOW_THRESHOLD = 150
 
 LANGUAGES = ["en-US", "es-ES"]
@@ -25,6 +26,7 @@ def clean_text(text):
     lowercase_text = lowercase_text.split()
     
     return lowercase_text
+
     
 def keyword_indication(text):
     cleaned_text = clean_text(text)
@@ -56,9 +58,10 @@ def detect_tone(recorded_input, sample_rate):
     else:
         return "Neutral"
     
-duration = 7
+duration = 3
 sample_rate = 44100
 channels = 1
+r = sr.Recognizer()
 
 while True:
     
@@ -74,21 +77,50 @@ while True:
     recording_int16 = np.int16(recorded_input * 32767)
 
     write("speech_test.wav",sample_rate , recording_int16)
-    import speech_recognition as sr
 
-    r = sr.Recognizer()
     
     with sr.AudioFile("speech_test.wav") as source:
         audio = r.record(source)
-
+    det_lang = ""
+    text_en = ""
+    text_es = ""
     try:
         catagory = ""
-        text = r.recognize_google(audio, language="auto")
+        try:
+            text_en= r.recognize_google(audio, language="en-US")
+        except sr.UnknownValueError:
+            text_en = ""
+        try:
+            text_es= r.recognize_google(audio, language="es-ES")  
+        except sr.UnknownValueError:
+             text_es = ""
+             
+        if(text_es and not text_en):
+            text = text_es
+            det_lang = "es"
+        elif(text_en and not text_es):
+            text = text_en
+            det_lang = "en"
+        elif(len(text_es) > len(text_en)):
+            text = text_es
+            det_lang = "es"
+        else:
+            text = text_en
+            det_lang = "en"
+
+        if not text.strip():  
+            print("No speech detected, skipping language detection")
+            continue
+       
+       
         if text == "stop":
             break
-        detected_language = detect(text)
-        if(detected_language != "en"):
-            text = GoogleTranslator(source='auto', target='en').translate(text)
+        if(det_lang == "es"):
+            text = GoogleTranslator(source = 'es', target = 'en').translate(text)
+            
+        print(f"Current Language: {det_lang}")
+        #if(detected_language != "en"):
+           # text = GoogleTranslator(source='auto', target='en').translate(text)
         tone = detect_tone(recorded_input, sample_rate)
         keywords = keyword_indication(text)
         evaluations = (tone, keywords)
